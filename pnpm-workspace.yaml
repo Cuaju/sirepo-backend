@@ -1,0 +1,8 @@
+packages:
+  - services/*
+  - packages/*
+
+injectWorkspacePackages: true
+
+onlyBuiltDependencies:
+  - bcrypt
