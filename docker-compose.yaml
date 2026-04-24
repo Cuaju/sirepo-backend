@@ -1,0 +1,37 @@
+services:
+  auth_postgres:
+    image: postgres:16
+    container_name: auth_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auth_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - auth_postgres_data:/var/lib/postgresql/data
+
+  authentication_service:
+    build:
+      context: .
+      dockerfile: services/authentication_service/Dockerfile
+      args:
+        DATABASE_URL: postgresql://postgres:postgres@auth_postgres:5432/auth_db?schema=public
+    container_name: authentication_service
+    restart: no
+    depends_on:
+      - auth_postgres
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:postgres@auth_postgres:5432/auth_db?schema=public
+      JWT_PRIVATE_KEY_PATH: ./keys/private.pem
+      JWT_PUBLIC_KEY_PATH: ./keys/public.pem
+      JWT_EXPIRES_IN: 1h
+      JWT_ISSUER: sirepo-auth-service
+      JWT_AUDIENCE: sirepo-clients
+
+volumes:
+  auth_postgres_data:

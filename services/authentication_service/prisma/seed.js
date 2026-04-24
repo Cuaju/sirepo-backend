@@ -1,7 +1,9 @@
 import 'dotenv/config';
-import { PrismaClient, UserType } from '@prisma/client';
+import prismaPkg from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { hashPassword } from '../src/utils/hash.js';
+
+const { PrismaClient, UserType } = prismaPkg;
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -36,9 +38,11 @@ async function main() {
   console.log('Seeded user:', user.username);
 }
 
-main().catch((error) => {
+main()
+  .catch((error) => {
     console.error(error);
     process.exit(1);
-  }).finally(async () => {
+  })
+  .finally(async () => {
     await prisma.$disconnect();
   });

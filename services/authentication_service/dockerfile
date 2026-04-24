@@ -1,0 +1,42 @@
+# ---------- BASE ----------
+FROM node:22-slim AS base
+
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
+RUN corepack enable
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
+# ---------- BUILD ----------
+FROM base AS build
+WORKDIR /repo
+
+ARG DATABASE_URL="postgresql://postgres:postgres@localhost:5432/auth_db?schema=public"
+ENV DATABASE_URL=$DATABASE_URL
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY services ./services
+
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile
+
+WORKDIR /repo/services/authentication_service
+RUN pnpm exec prisma generate
+
+WORKDIR /repo
+RUN pnpm deploy --filter authentication_service --prod /prod/authentication_service
+
+# regenerate Prisma Client inside the deployed app
+WORKDIR /prod/authentication_service
+RUN pnpm exec prisma generate
+
+# ---------- RUNTIME ----------
+FROM base AS runtime
+WORKDIR /app
+
+COPY --from=build /prod/authentication_service ./
+
+ENV NODE_ENV=production
+EXPOSE 3001
+
+CMD ["sh", "-c", "pnpm exec prisma migrate deploy && node src/index.js"]
